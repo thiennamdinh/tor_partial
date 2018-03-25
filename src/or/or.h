@@ -4693,6 +4693,7 @@ typedef struct {
   // moneTor ideal configs
   int EnablePayment;
   double MoneTorPriorityMod;
+  double MoneTorFlowMod;
 
   // moneTor obsolete compatibility configs
   int Intermediary;

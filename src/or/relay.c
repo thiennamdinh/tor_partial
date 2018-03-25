@@ -78,8 +78,8 @@
 #include "scheduler.h"
 #include "rephist.h"
 
-// moneTor: square root of get_options()->MoneTorPriorityMod; calculated once
-static priority_mod_sqrt;
+// moneTor: square root of get_options()->MoneTorFlowMod; calculated once
+static flow_mod_sqrt;
 
 static edge_connection_t *relay_lookup_conn(circuit_t *circ, cell_t *cell,
                                             cell_direction_t cell_direction,
@@ -2832,14 +2832,14 @@ packed_cell_get_circid(const packed_cell_t *cell, int wide_circ_ids)
 int32_t mt_modify_flow_value(int32_t original, circuit_t* circ){
 
   // calculate the square once and store it for the duration of the program
-  if(!priority_mod_sqrt)
-    priority_mod_sqrt = sqrt(get_options()->MoneTorPriorityMod);
+  if(!flow_mod_sqrt)
+    flow_mod_sqrt = sqrt(get_options()->MoneTorFlowMod);
 
-  // return a rescaled value such that val_premium = val_nonprem * MoneTorPriorityMod
+  // return a rescaled value such that val_premium = val_nonprem * MoneTorFlowMod
   if((circ && circ->mt_priority) || (get_options()->ClientOnly && get_options()->EnablePayment))
-    return original * priority_mod_sqrt;
+    return original * flow_mod_sqrt;
   else
-    return original / priority_mod_sqrt;
+    return original / flow_mod_sqrt;
 }
 
 /** Pull as many cells as possible (but no more than <b>max</b>) from the
