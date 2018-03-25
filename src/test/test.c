@@ -311,8 +311,8 @@ test_onion_queues(void *arg)
   uint8_t buf1[TAP_ONIONSKIN_CHALLENGE_LEN] = {0};
   uint8_t buf2[NTOR_ONIONSKIN_LEN] = {0};
 
-  or_circuit_t *circ1 = or_circuit_new(0, NULL);
-  or_circuit_t *circ2 = or_circuit_new(0, NULL);
+  or_circuit_t *circ1 = or_circuit_new(0, NULL, 0);
+  or_circuit_t *circ2 = or_circuit_new(0, NULL, 0);
 
   create_cell_t *onionskin = NULL, *create2_ptr;
   create_cell_t *create1 = tor_malloc_zero(sizeof(create_cell_t));
@@ -1264,4 +1264,3 @@ struct testgroup_t testgroups[] = {
   { "dns/", dns_tests },
   END_OF_GROUPS
 };
-

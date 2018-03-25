@@ -107,7 +107,7 @@ mock_relay_send_command_from_edge(streamid_t stream_id, circuit_t *circ,
 static or_circuit_t *
 helper_create_intro_circuit(void)
 {
-  or_circuit_t *circ = or_circuit_new(0, NULL);
+  or_circuit_t *circ = or_circuit_new(0, NULL, 0);
   tt_assert(circ);
   circuit_change_purpose(TO_CIRCUIT(circ), CIRCUIT_PURPOSE_OR);
  done:
@@ -170,7 +170,7 @@ test_establish_intro_wrong_purpose(void *arg)
   ssize_t cell_len = 0;
   char circ_nonce[DIGEST_LEN] = {0};
   uint8_t cell_body[RELAY_PAYLOAD_SIZE];
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void)arg;
 
@@ -211,7 +211,7 @@ static void
 test_establish_intro_wrong_keytype(void *arg)
 {
   int retval;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
   char circ_nonce[DIGEST_LEN] = {0};
 
   (void) arg;
@@ -239,7 +239,7 @@ test_establish_intro_wrong_keytype2(void *arg)
   char circ_nonce[DIGEST_LEN] = {0};
   uint8_t cell_body[RELAY_PAYLOAD_SIZE];
   ssize_t cell_len = 0;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void) arg;
 
@@ -275,7 +275,7 @@ test_establish_intro_wrong_mac(void *arg)
   ssize_t cell_len = 0;
   uint8_t cell_body[RELAY_PAYLOAD_SIZE];
   trn_cell_establish_intro_t *cell = NULL;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void) arg;
 
@@ -347,7 +347,7 @@ test_establish_intro_wrong_auth_key_len(void *arg)
   ssize_t cell_len = 0;
   size_t bad_auth_key_len = ED25519_PUBKEY_LEN - 1;
   trn_cell_establish_intro_t *cell = NULL;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void) arg;
 
@@ -392,7 +392,7 @@ test_establish_intro_wrong_sig_len(void *arg)
   ssize_t cell_len = 0;
   size_t bad_sig_len = ED25519_SIG_LEN - 1;
   trn_cell_establish_intro_t *cell = NULL;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void) arg;
 
@@ -435,7 +435,7 @@ test_establish_intro_wrong_sig(void *arg)
   char circ_nonce[DIGEST_LEN] = {0};
   uint8_t cell_body[RELAY_PAYLOAD_SIZE];
   ssize_t cell_len = 0;
-  or_circuit_t *intro_circ = or_circuit_new(0,NULL);
+  or_circuit_t *intro_circ = or_circuit_new(0,NULL,0);
 
   (void) arg;
 
@@ -587,7 +587,7 @@ test_intro_point_registration(void *arg)
 
   /* Create a v3 intro point */
   {
-    intro_circ = or_circuit_new(0, NULL);
+    intro_circ = or_circuit_new(0, NULL, 0);
     tt_assert(intro_circ);
     establish_intro_cell = helper_establish_intro_v3(intro_circ);
 
@@ -606,7 +606,7 @@ test_intro_point_registration(void *arg)
   {
     char key_digest[DIGEST_LEN];
 
-    legacy_intro_circ = or_circuit_new(1, NULL);
+    legacy_intro_circ = or_circuit_new(1, NULL, 0);
     tt_assert(legacy_intro_circ);
     legacy_auth_key = helper_establish_intro_v2(legacy_intro_circ);
     tt_assert(legacy_auth_key);
@@ -647,7 +647,7 @@ test_introduce1_suitable_circuit(void *arg)
 
   /* Valid suitable circuit. */
   {
-    circ = or_circuit_new(0, NULL);
+    circ = or_circuit_new(0, NULL, 0);
     circuit_change_purpose(TO_CIRCUIT(circ), CIRCUIT_PURPOSE_OR);
     ret = circuit_is_suitable_for_introduce1(circ);
     circuit_free(TO_CIRCUIT(circ));
@@ -656,7 +656,7 @@ test_introduce1_suitable_circuit(void *arg)
 
   /* Test if the circuit purpose safeguard works correctly. */
   {
-    circ = or_circuit_new(0, NULL);
+    circ = or_circuit_new(0, NULL, 0);
     circuit_change_purpose(TO_CIRCUIT(circ), CIRCUIT_PURPOSE_INTRO_POINT);
     ret = circuit_is_suitable_for_introduce1(circ);
     circuit_free(TO_CIRCUIT(circ));
@@ -665,7 +665,7 @@ test_introduce1_suitable_circuit(void *arg)
 
   /* Test the non-edge circuit safeguard works correctly. */
   {
-    circ = or_circuit_new(0, NULL);
+    circ = or_circuit_new(0, NULL, 0);
     circuit_change_purpose(TO_CIRCUIT(circ), CIRCUIT_PURPOSE_OR);
     /* Bogus pointer, the check is against NULL on n_chan. */
     circ->base_.n_chan = (channel_t *) circ;
@@ -677,7 +677,7 @@ test_introduce1_suitable_circuit(void *arg)
   /* Mangle the circuit a bit more so see if our only one INTRODUCE1 cell
    * limit works correctly. */
   {
-    circ = or_circuit_new(0, NULL);
+    circ = or_circuit_new(0, NULL, 0);
     circuit_change_purpose(TO_CIRCUIT(circ), CIRCUIT_PURPOSE_OR);
     circ->already_received_introduce1 = 1;
     ret = circuit_is_suitable_for_introduce1(circ);
@@ -918,4 +918,3 @@ struct testcase_t hs_intropoint_tests[] = {
 
   END_OF_TESTCASES
 };
-

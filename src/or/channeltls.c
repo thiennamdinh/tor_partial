@@ -1137,13 +1137,16 @@ channel_tls_handle_cell(cell_t *cell, or_connection_t *conn)
       PROCESS_CELL(padding_negotiate, cell, chan);
       break;
     case CELL_CREATE:
+    case CELL_CREATE_PREMIUM:
     case CELL_CREATE_FAST:
+    case CELL_CREATE_FAST_PREMIUM:
     case CELL_CREATED:
     case CELL_CREATED_FAST:
     case CELL_RELAY:
     case CELL_RELAY_EARLY:
     case CELL_DESTROY:
     case CELL_CREATE2:
+    case CELL_CREATE2_PREMIUM:
     case CELL_CREATED2:
       /*
        * These are all transport independent and we pass them up through the
@@ -2484,4 +2487,3 @@ channel_tls_process_authenticate_cell(var_cell_t *cell, channel_tls_t *chan)
 
 #undef ERR
 }
-

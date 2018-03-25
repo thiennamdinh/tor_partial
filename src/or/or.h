@@ -589,6 +589,10 @@ typedef enum {
 #define RELAY_COMMAND_EXTEND2 14
 #define RELAY_COMMAND_EXTENDED2 15
 
+// XXX moneTor
+#define RELAY_COMMAND_EXTEND_PREMIUM 16
+#define RELAY_COMMAND_EXTEND2_PREMIUM 17
+
 #define RELAY_COMMAND_ESTABLISH_INTRO 32
 #define RELAY_COMMAND_ESTABLISH_RENDEZVOUS 33
 #define RELAY_COMMAND_INTRODUCE1 34
@@ -920,6 +924,12 @@ typedef enum {
 #define CELL_CREATE2 10
 #define CELL_CREATED2 11
 #define CELL_PADDING_NEGOTIATE 12
+
+// XXX moneTor
+#define CELL_CREATE_PREMIUM 13
+#define CELL_CREATE_FAST_PREMIUM 14
+#define CELL_CREATE2_PREMIUM 15
+
 
 #define CELL_VPADDING 128
 #define CELL_CERTS 129
@@ -3162,6 +3172,10 @@ typedef struct circuit_t {
   /** Hashtable node: used to look up the circuit by its HS token using the HS
       circuitmap. */
   HT_ENTRY(circuit_t) hs_circuitmap_node;
+
+  // XXX moneTor
+  int mt_priority;
+
 } circuit_t;
 
 /** Largest number of relay_early cells that we can send on a given
@@ -4675,6 +4689,20 @@ typedef struct {
 
   /** Autobool: Do we refuse single hop client rendezvous? */
   int DoSRefuseSingleHopClientRendezvous;
+
+  // moneTor ideal configs
+  int EnablePayment;
+  double MoneTorPriorityMod;
+
+  // moneTor obsolete compatibility configs
+  int Intermediary;
+  int Ledger;
+  int MoneTorPublicMint;
+  int MoneTorSingleThread;
+  int MoneTorSingleCore;
+  int MoneTorPaymentRate;
+  int MoneTorInitialWindow;
+
 } or_options_t;
 
 #define LOG_PROTOCOL_WARN (get_protocol_warning_severity_level())
@@ -5514,4 +5542,3 @@ typedef struct tor_version_t {
 } tor_version_t;
 
 #endif /* !defined(TOR_OR_H) */
-

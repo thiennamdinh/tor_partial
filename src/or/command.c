@@ -113,7 +113,7 @@ command_time_process_cell(cell_t *cell, channel_t *chan, int *time,
   struct timeval start, end;
   long time_passed;
 
-  tor_gettimeofday(&start);
+`  tor_gettimeofday(&start);
 
   (*func)(cell, chan);
 
@@ -182,6 +182,10 @@ command_process_cell(channel_t *chan, cell_t *cell)
     case CELL_CREATE:
     case CELL_CREATE_FAST:
     case CELL_CREATE2:
+      // XXX moneTor
+    case CELL_CREATE_PREMIUM:
+    case CELL_CREATE_FAST_PREMIUM:
+    case CELL_CREATE2_PREMIUM:
       ++stats_n_create_cells_processed;
       PROCESS_CELL(create, cell, chan);
       break;
@@ -327,10 +331,31 @@ command_process_create_cell(cell_t *cell, channel_t *chan)
     return;
   }
 
-  circ = or_circuit_new(cell->circ_id, chan);
+  int premium;
+
+  // XXX moneTor extract premium and switch create cell back to original intent
+  switch(cell->command){
+    case CELL_CREATE_PREMIUM:
+      cell->command = CELL_CREATE;
+      premium = 1;
+      break;
+    case CELL_CREATE_FAST_PREMIUM:
+      cell->command = CELL_CREATE_FAST;
+      premium = 1;
+      break;
+    case CELL_CREATE2_PREMIUM:
+      cell->command = CELL_CREATE2;
+      premium = 1;
+      break;
+    default:;
+      premium = 0;
+  }
+
+  circ = or_circuit_new(cell->circ_id, chan, premium);
   circ->base_.purpose = CIRCUIT_PURPOSE_OR;
   circuit_set_state(TO_CIRCUIT(circ), CIRCUIT_STATE_ONIONSKIN_PENDING);
   create_cell = tor_malloc_zero(sizeof(create_cell_t));
+
   if (create_cell_parse(create_cell, cell) < 0) {
     tor_free(create_cell);
     log_fn(LOG_PROTOCOL_WARN, LD_OR,
@@ -643,4 +668,3 @@ command_setup_listener(channel_listener_t *listener)
 
   channel_listener_set_listener_fn(listener, command_handle_incoming_channel);
 }
-

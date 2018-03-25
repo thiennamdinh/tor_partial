@@ -34,7 +34,7 @@ void circuit_set_state(circuit_t *circ, uint8_t state);
 void circuit_close_all_marked(void);
 int32_t circuit_initial_package_window(void);
 origin_circuit_t *origin_circuit_new(void);
-or_circuit_t *or_circuit_new(circid_t p_circ_id, channel_t *p_chan);
+or_circuit_t *or_circuit_new(circid_t p_circ_id, channel_t *p_chan, int premium);
 circuit_t *circuit_get_by_circid_channel(circid_t circ_id,
                                          channel_t *chan);
 circuit_t *
@@ -89,4 +89,3 @@ STATIC uint32_t circuit_max_queued_item_age(const circuit_t *c, uint32_t now);
 #endif /* defined(CIRCUITLIST_PRIVATE) */
 
 #endif /* !defined(TOR_CIRCUITLIST_H) */
-

@@ -120,4 +120,3 @@ int extended_cell_format(uint8_t *command_out, uint16_t *len_out,
                          uint8_t *payload_out, const extended_cell_t *cell_in);
 
 #endif /* !defined(TOR_ONION_H) */
-

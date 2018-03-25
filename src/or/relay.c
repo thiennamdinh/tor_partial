@@ -78,6 +78,9 @@
 #include "scheduler.h"
 #include "rephist.h"
 
+// moneTor: square root of get_options()->MoneTorPriorityMod; calculated once
+static priority_mod_sqrt;
+
 static edge_connection_t *relay_lookup_conn(circuit_t *circ, cell_t *cell,
                                             cell_direction_t cell_direction,
                                             crypt_path_t *layer_hint);
@@ -648,6 +651,7 @@ relay_command_to_string(uint8_t command)
     case RELAY_COMMAND_CONNECTED: return "CONNECTED";
     case RELAY_COMMAND_SENDME: return "SENDME";
     case RELAY_COMMAND_EXTEND: return "EXTEND";
+    case RELAY_COMMAND_EXTEND_PREMIUM: return "EXTEND_PREMIUM";
     case RELAY_COMMAND_EXTENDED: return "EXTENDED";
     case RELAY_COMMAND_TRUNCATE: return "TRUNCATE";
     case RELAY_COMMAND_TRUNCATED: return "TRUNCATED";
@@ -666,6 +670,7 @@ relay_command_to_string(uint8_t command)
       return "RENDEZVOUS_ESTABLISHED";
     case RELAY_COMMAND_INTRODUCE_ACK: return "INTRODUCE_ACK";
     case RELAY_COMMAND_EXTEND2: return "EXTEND2";
+    case RELAY_COMMAND_EXTEND2_PREMIUM: return "EXTEND2_PREMIUM";
     case RELAY_COMMAND_EXTENDED2: return "EXTENDED2";
     default:
       tor_snprintf(buf, sizeof(buf), "Unrecognized relay command %u",
@@ -739,7 +744,9 @@ relay_send_command_from_edge_,(streamid_t stream_id, circuit_t *circ,
     if (origin_circ->remaining_relay_early_cells > 0 &&
         (relay_command == RELAY_COMMAND_EXTEND ||
          relay_command == RELAY_COMMAND_EXTEND2 ||
-         cpath_layer != origin_circ->cpath)) {
+	 relay_command == RELAY_COMMAND_EXTEND_PREMIUM ||
+         relay_command == RELAY_COMMAND_EXTEND2_PREMIUM ||
+	 cpath_layer != origin_circ->cpath)) {
       /* If we've got any relay_early cells left and (we're sending
        * an extend cell or we're not talking to the first hop), use
        * one of them.  Don't worry about the conn protocol version:
@@ -753,7 +760,9 @@ relay_send_command_from_edge_,(streamid_t stream_id, circuit_t *circ,
       origin_circ->relay_early_commands[
           origin_circ->relay_early_cells_sent++] = relay_command;
     } else if (relay_command == RELAY_COMMAND_EXTEND ||
-               relay_command == RELAY_COMMAND_EXTEND2) {
+               relay_command == RELAY_COMMAND_EXTEND2 ||
+	       relay_command == RELAY_COMMAND_EXTEND_PREMIUM ||
+               relay_command == RELAY_COMMAND_EXTEND2_PREMIUM) {
       /* If no RELAY_EARLY cells can be sent over this circuit, log which
        * commands have been sent as RELAY_EARLY cells before; helps debug
        * task 878. */
@@ -1746,7 +1755,9 @@ connection_edge_process_relay_cell(cell_t *cell, circuit_t *circ,
       }
       return 0;
     case RELAY_COMMAND_EXTEND:
-    case RELAY_COMMAND_EXTEND2: {
+    case RELAY_COMMAND_EXTEND2:
+    case RELAY_COMMAND_EXTEND_PREMIUM:;
+    case RELAY_COMMAND_EXTEND2_PREMIUM: {
       static uint64_t total_n_extend=0, total_nonearly=0;
       total_n_extend++;
       if (rh.stream_id) {
@@ -1860,22 +1871,28 @@ connection_edge_process_relay_cell(cell_t *cell, circuit_t *circ,
       return 0;
     case RELAY_COMMAND_SENDME:
       if (!rh.stream_id) {
+
+
+	// moneTor flow: relay side
+	int circwindow_increment = mt_modify_flow_value(CIRCWINDOW_INCREMENT, circ);
+	int circwindow_start_max = mt_modify_flow_value(CIRCWINDOW_START_MAX, circ);
+
         if (layer_hint) {
-          if (layer_hint->package_window + CIRCWINDOW_INCREMENT >
-                CIRCWINDOW_START_MAX) {
+          if (layer_hint->package_window + circwindow_increment >
+                circwindow_start_max) {
             static struct ratelim_t exit_warn_ratelim = RATELIM_INIT(600);
             log_fn_ratelim(&exit_warn_ratelim, LOG_WARN, LD_PROTOCOL,
                    "Unexpected sendme cell from exit relay. "
                    "Closing circ.");
             return -END_CIRC_REASON_TORPROTOCOL;
           }
-          layer_hint->package_window += CIRCWINDOW_INCREMENT;
+          layer_hint->package_window += circwindow_increment;
           log_debug(LD_APP,"circ-level sendme at origin, packagewindow %d.",
                     layer_hint->package_window);
           circuit_resume_edge_reading(circ, layer_hint);
         } else {
-          if (circ->package_window + CIRCWINDOW_INCREMENT >
-                CIRCWINDOW_START_MAX) {
+          if (circ->package_window + circwindow_increment >
+                circwindow_start_max) {
             static struct ratelim_t client_warn_ratelim = RATELIM_INIT(600);
             log_fn_ratelim(&client_warn_ratelim,LOG_PROTOCOL_WARN, LD_PROTOCOL,
                    "Unexpected sendme cell from client. "
@@ -1883,7 +1900,7 @@ connection_edge_process_relay_cell(cell_t *cell, circuit_t *circ,
                    circ->package_window);
             return -END_CIRC_REASON_TORPROTOCOL;
           }
-          circ->package_window += CIRCWINDOW_INCREMENT;
+          circ->package_window += circwindow_increment;
           log_debug(LD_APP,
                     "circ-level sendme at non-origin, packagewindow %d.",
                     circ->package_window);
@@ -1896,7 +1913,11 @@ connection_edge_process_relay_cell(cell_t *cell, circuit_t *circ,
                  rh.stream_id);
         return 0;
       }
-      conn->package_window += STREAMWINDOW_INCREMENT;
+
+      // moneTor flow: relay side
+      int streamwindow_increment = mt_modify_flow_value(STREAMWINDOW_INCREMENT, circ);
+
+      conn->package_window += streamwindow_increment;
       log_debug(domain,"stream-level sendme, packagewindow now %d.",
                 conn->package_window);
       if (circuit_queue_streams_are_blocked(circ)) {
@@ -2136,11 +2157,15 @@ connection_edge_consider_sending_sendme(edge_connection_t *conn)
     return;
   }
 
-  while (conn->deliver_window <= STREAMWINDOW_START - STREAMWINDOW_INCREMENT) {
+  // moneTor flow: client side & relay side
+  int streamwindow_increment = mt_modify_flow_value(STREAMWINDOW_INCREMENT, circ);
+  int streamwindow_start = mt_modify_flow_value(STREAMWINDOW_START, circ);
+
+  while (conn->deliver_window <= streamwindow_start - streamwindow_increment) {
     log_debug(conn->base_.type == CONN_TYPE_AP ?LD_APP:LD_EXIT,
               "Outbuf %d, Queuing stream sendme.",
               (int)conn->base_.outbuf_flushlen);
-    conn->deliver_window += STREAMWINDOW_INCREMENT;
+    conn->deliver_window += streamwindow_increment;
     if (connection_edge_send_command(conn, RELAY_COMMAND_SENDME,
                                      NULL, 0) < 0) {
       log_warn(LD_APP,"connection_edge_send_command failed. Skipping.");
@@ -2381,13 +2406,18 @@ circuit_consider_sending_sendme(circuit_t *circ, crypt_path_t *layer_hint)
 {
 //  log_fn(LOG_INFO,"Considering: layer_hint is %s",
 //         layer_hint ? "defined" : "null");
+
+  // moneTor flow: client side & relay side
+  int circwindow_increment = mt_modify_flow_value(CIRCWINDOW_INCREMENT, circ);
+  int circwindow_start = mt_modify_flow_value(CIRCWINDOW_START, circ);
+
   while ((layer_hint ? layer_hint->deliver_window : circ->deliver_window) <=
-          CIRCWINDOW_START - CIRCWINDOW_INCREMENT) {
+          circwindow_start - circwindow_increment) {
     log_debug(LD_CIRC,"Queuing circuit sendme.");
     if (layer_hint)
-      layer_hint->deliver_window += CIRCWINDOW_INCREMENT;
+      layer_hint->deliver_window += circwindow_increment;
     else
-      circ->deliver_window += CIRCWINDOW_INCREMENT;
+      circ->deliver_window += circwindow_increment;
     if (relay_send_command_from_edge(0, circ, RELAY_COMMAND_SENDME,
                                      NULL, 0, layer_hint) < 0) {
       log_warn(LD_CIRC,
@@ -2793,6 +2823,23 @@ packed_cell_get_circid(const packed_cell_t *cell, int wide_circ_ids)
   } else {
     return ntohs(get_uint16(cell->body));
   }
+}
+
+/**
+ * return modified versions of circuit and stream flow control values that were
+ * previously constants in vanilla Tor.
+ */
+int32_t mt_modify_flow_value(int32_t original, circuit_t* circ){
+
+  // calculate the square once and store it for the duration of the program
+  if(!priority_mod_sqrt)
+    priority_mod_sqrt = sqrt(get_options()->MoneTorPriorityMod);
+
+  // return a rescaled value such that val_premium = val_nonprem * MoneTorPriorityMod
+  if((circ && circ->mt_priority) || (get_options()->ClientOnly && get_options()->EnablePayment))
+    return original * priority_mod_sqrt;
+  else
+    return original / priority_mod_sqrt;
 }
 
 /** Pull as many cells as possible (but no more than <b>max</b>) from the
@@ -3205,4 +3252,3 @@ circuit_queue_streams_are_blocked(circuit_t *circ)
     return circ->streams_blocked_on_p_chan;
   }
 }
-

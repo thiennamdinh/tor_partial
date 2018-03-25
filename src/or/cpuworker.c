@@ -439,15 +439,21 @@ cpuworker_onion_handshake_threadfn(void *state_, void *work_)
     log_debug(LD_OR,"onion_skin_server_handshake succeeded.");
     cell_out->handshake_len = n;
     switch (cc->cell_type) {
-    case CELL_CREATE:
-      cell_out->cell_type = CELL_CREATED; break;
-    case CELL_CREATE2:
-      cell_out->cell_type = CELL_CREATED2; break;
-    case CELL_CREATE_FAST:
-      cell_out->cell_type = CELL_CREATED_FAST; break;
-    default:
-      tor_assert(0);
-      return WQ_RPL_SHUTDOWN;
+      case CELL_CREATE:
+	cell_out->cell_type = CELL_CREATED; break;
+      case CELL_CREATE2:
+	cell_out->cell_type = CELL_CREATED2; break;
+      case CELL_CREATE_FAST:
+	cell_out->cell_type = CELL_CREATED_FAST; break;
+      case CELL_CREATE_PREMIUM:
+	cell_out->cell_type = CELL_CREATED; break;
+      case CELL_CREATE2_PREMIUM:
+	cell_out->cell_type = CELL_CREATED2; break;
+      case CELL_CREATE_FAST_PREMIUM:
+	cell_out->cell_type = CELL_CREATED_FAST; break;
+      default:
+	tor_assert(0);
+	return WQ_RPL_SHUTDOWN;
     }
     rpl.success = 1;
   }
@@ -596,4 +602,3 @@ cpuworker_cancel_circ_handshake(or_circuit_t *circ)
     circ->workqueue_entry = NULL;
   }
 }
-

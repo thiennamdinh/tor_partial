@@ -1554,16 +1554,22 @@ router_dirport_found_reachable(void)
 void
 router_perform_bandwidth_test(int num_circs, time_t now)
 {
-  int num_cells = (int)(get_options()->BandwidthRate * 10 /
-                        CELL_MAX_NETWORK_SIZE);
-  int max_cells = num_cells < CIRCWINDOW_START ?
-                    num_cells : CIRCWINDOW_START;
-  int cells_per_circuit = max_cells / num_circs;
+
   origin_circuit_t *circ = NULL;
 
   log_notice(LD_OR,"Performing bandwidth self-test...done.");
   while ((circ = circuit_get_next_by_pk_and_purpose(circ, NULL,
                                               CIRCUIT_PURPOSE_TESTING))) {
+
+    // moneTor flow: client side (can probably assume these are never priority)
+    int circwindow_start = mt_modify_flow_value(CIRCWINDOW_START, NULL);
+
+    int num_cells = (int)(get_options()->BandwidthRate * 10 /
+			  CELL_MAX_NETWORK_SIZE);
+    int max_cells = num_cells < circwindow_start ?
+      num_cells : circwindow_start;
+    int cells_per_circuit = max_cells / num_circs;
+
     /* dump cells_per_circuit drop cells onto this circ */
     int i = cells_per_circuit;
     if (circ->base_.state != CIRCUIT_STATE_OPEN)
@@ -3729,4 +3735,3 @@ router_get_all_orports(const routerinfo_t *ri)
   fake_node.ri = (routerinfo_t *)ri;
   return node_get_all_orports(&fake_node);
 }
-

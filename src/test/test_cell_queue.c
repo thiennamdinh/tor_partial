@@ -113,7 +113,7 @@ test_circuit_n_cells(void *arg)
   pc5 = packed_cell_new();
   tt_assert(pc1 && pc2 && pc3 && pc4 && pc5);
 
-  or_c = or_circuit_new(0, NULL);
+  or_c = or_circuit_new(0, NULL, 0);
   origin_c = origin_circuit_new();
   origin_c->base_.purpose = CIRCUIT_PURPOSE_C_GENERAL;
 
@@ -139,4 +139,3 @@ struct testcase_t cell_queue_tests[] = {
   { "circ_n_cells", test_circuit_n_cells, TT_FORK, NULL, NULL },
   END_OF_TESTCASES
 };
-

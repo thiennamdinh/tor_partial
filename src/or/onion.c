@@ -673,17 +673,21 @@ onion_skin_client_handshake(int type,
 static int
 check_create_cell(const create_cell_t *cell, int unknown_ok)
 {
+  // XXX moneTor
   switch (cell->cell_type) {
   case CELL_CREATE:
+  case CELL_CREATE_PREMIUM:
     if (cell->handshake_type != ONION_HANDSHAKE_TYPE_TAP &&
         cell->handshake_type != ONION_HANDSHAKE_TYPE_NTOR)
       return -1;
     break;
   case CELL_CREATE_FAST:
+  case CELL_CREATE_FAST_PREMIUM:
     if (cell->handshake_type != ONION_HANDSHAKE_TYPE_FAST)
       return -1;
     break;
   case CELL_CREATE2:
+  case CELL_CREATE2_PREMIUM:
     break;
   default:
     return -1;
@@ -768,8 +772,10 @@ parse_create2_payload(create_cell_t *cell_out, const uint8_t *p, size_t p_len)
 int
 create_cell_parse(create_cell_t *cell_out, const cell_t *cell_in)
 {
+  // XXX moneTor
   switch (cell_in->command) {
   case CELL_CREATE:
+  case CELL_CREATE_PREMIUM:
     if (tor_memeq(cell_in->payload, NTOR_CREATE_MAGIC, 16)) {
       create_cell_init(cell_out, CELL_CREATE, ONION_HANDSHAKE_TYPE_NTOR,
                        NTOR_ONIONSKIN_LEN, cell_in->payload+16);
@@ -779,10 +785,12 @@ create_cell_parse(create_cell_t *cell_out, const cell_t *cell_in)
     }
     break;
   case CELL_CREATE_FAST:
+  case CELL_CREATE_FAST_PREMIUM:
     create_cell_init(cell_out, CELL_CREATE_FAST, ONION_HANDSHAKE_TYPE_FAST,
                      CREATE_FAST_LEN, cell_in->payload);
     break;
   case CELL_CREATE2:
+  case CELL_CREATE2_PREMIUM:
     if (parse_create2_payload(cell_out, cell_in->payload,
                               CELL_PAYLOAD_SIZE) < 0)
       return -1;
@@ -859,12 +867,17 @@ check_extend_cell(const extend_cell_t *cell)
   /* We don't currently allow EXTEND2 cells without an IPv4 address */
   if (tor_addr_family(&cell->orport_ipv4.addr) == AF_UNSPEC)
     return -1;
-  if (cell->create_cell.cell_type == CELL_CREATE) {
-    if (cell->cell_type != RELAY_COMMAND_EXTEND)
+  if (cell->create_cell.cell_type == CELL_CREATE ||
+      cell->create_cell.cell_type == CELL_CREATE_PREMIUM) {
+    if (cell->cell_type != RELAY_COMMAND_EXTEND &&
+	cell->cell_type != RELAY_COMMAND_EXTEND_PREMIUM)
       return -1;
-  } else if (cell->create_cell.cell_type == CELL_CREATE2) {
+  } else if (cell->create_cell.cell_type == CELL_CREATE2 ||
+	     cell->create_cell.cell_type == CELL_CREATE2_PREMIUM) {
     if (cell->cell_type != RELAY_COMMAND_EXTEND2 &&
-        cell->cell_type != RELAY_COMMAND_EXTEND)
+        cell->cell_type != RELAY_COMMAND_EXTEND &&
+	cell->cell_type != RELAY_COMMAND_EXTEND2_PREMIUM &&
+	cell->cell_type != RELAY_COMMAND_EXTEND_PREMIUM)
       return -1;
   } else {
     /* In particular, no CREATE_FAST cells are allowed */
@@ -1000,38 +1013,41 @@ extend_cell_parse(extend_cell_t *cell_out, const uint8_t command,
     return -1;
 
   switch (command) {
-  case RELAY_COMMAND_EXTEND:
-    {
-      extend1_cell_body_t *cell = NULL;
-      if (extend1_cell_body_parse(&cell, payload, payload_length)<0 ||
-          cell == NULL) {
-        if (cell)
-          extend1_cell_body_free(cell);
-        return -1;
+    case RELAY_COMMAND_EXTEND:
+    case RELAY_COMMAND_EXTEND_PREMIUM:
+
+      {
+	extend1_cell_body_t *cell = NULL;
+	if (extend1_cell_body_parse(&cell, payload, payload_length)<0 ||
+	    cell == NULL) {
+	  if (cell)
+	    extend1_cell_body_free(cell);
+	  return -1;
+	}
+	int r = extend_cell_from_extend1_cell_body(cell_out, cell);
+	extend1_cell_body_free(cell);
+	if (r < 0)
+	  return r;
       }
-      int r = extend_cell_from_extend1_cell_body(cell_out, cell);
-      extend1_cell_body_free(cell);
-      if (r < 0)
-        return r;
-    }
-    break;
-  case RELAY_COMMAND_EXTEND2:
-    {
-      extend2_cell_body_t *cell = NULL;
-      if (extend2_cell_body_parse(&cell, payload, payload_length) < 0 ||
-          cell == NULL) {
-        if (cell)
-          extend2_cell_body_free(cell);
-        return -1;
+      break;
+    case RELAY_COMMAND_EXTEND2:
+    case RELAY_COMMAND_EXTEND2_PREMIUM:
+      {
+	extend2_cell_body_t *cell = NULL;
+	if (extend2_cell_body_parse(&cell, payload, payload_length) < 0 ||
+	    cell == NULL) {
+	  if (cell)
+	    extend2_cell_body_free(cell);
+	  return -1;
+	}
+	int r = extend_cell_from_extend2_cell_body(cell_out, cell);
+	extend2_cell_body_free(cell);
+	if (r < 0)
+	  return r;
       }
-      int r = extend_cell_from_extend2_cell_body(cell_out, cell);
-      extend2_cell_body_free(cell);
-      if (r < 0)
-        return r;
-    }
-    break;
-  default:
-    return -1;
+      break;
+    default:
+      return -1;
   }
 
   return check_extend_cell(cell_out);
@@ -1117,25 +1133,28 @@ create_cell_format_impl(cell_t *cell_out, const create_cell_t *cell_in,
   space = sizeof(cell_out->payload);
 
   switch (cell_in->cell_type) {
-  case CELL_CREATE:
-    if (cell_in->handshake_type == ONION_HANDSHAKE_TYPE_NTOR) {
-      memcpy(p, NTOR_CREATE_MAGIC, 16);
-      p += 16;
-      space -= 16;
-    }
-    /* Fall through */
-  case CELL_CREATE_FAST:
-    tor_assert(cell_in->handshake_len <= space);
-    memcpy(p, cell_in->onionskin, cell_in->handshake_len);
-    break;
-  case CELL_CREATE2:
-    tor_assert(cell_in->handshake_len <= sizeof(cell_out->payload)-4);
-    set_uint16(cell_out->payload, htons(cell_in->handshake_type));
-    set_uint16(cell_out->payload+2, htons(cell_in->handshake_len));
-    memcpy(cell_out->payload + 4, cell_in->onionskin, cell_in->handshake_len);
-    break;
-  default:
-    return -1;
+    case CELL_CREATE:
+    case CELL_CREATE_PREMIUM:
+      if (cell_in->handshake_type == ONION_HANDSHAKE_TYPE_NTOR) {
+	memcpy(p, NTOR_CREATE_MAGIC, 16);
+	p += 16;
+	space -= 16;
+      }
+      /* Fall through */
+    case CELL_CREATE_FAST:
+    case CELL_CREATE_FAST_PREMIUM:
+      tor_assert(cell_in->handshake_len <= space);
+      memcpy(p, cell_in->onionskin, cell_in->handshake_len);
+      break;
+    case CELL_CREATE2:
+    case CELL_CREATE2_PREMIUM:
+      tor_assert(cell_in->handshake_len <= sizeof(cell_out->payload)-4);
+      set_uint16(cell_out->payload, htons(cell_in->handshake_type));
+      set_uint16(cell_out->payload+2, htons(cell_in->handshake_len));
+      memcpy(cell_out->payload + 4, cell_in->onionskin, cell_in->handshake_len);
+      break;
+    default:
+      return -1;
   }
 
   return 0;
@@ -1332,4 +1351,3 @@ extended_cell_format(uint8_t *command_out, uint16_t *len_out,
 
   return 0;
 }
-

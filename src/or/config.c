@@ -211,6 +211,18 @@ DUMMY_TYPECHECK_INSTANCE(or_options_t);
  * be chosen first.
  */
 static config_var_t option_vars_[] = {
+
+  // XXX moneTor
+  V(EnablePayment,               BOOL,     "0"),
+  V(MoneTorPriorityMod,          DOUBLE,   "1.0"),
+    // moneTor obsolete compatibility configs
+  V(Intermediary,                BOOL,     "0"),
+  V(Ledger,                      BOOL,     "0"),
+  V(MoneTorPublicMint,           BOOL,     "0"),
+  V(MoneTorSingleThread,         BOOL,     "0"),
+  V(MoneTorSingleCore,           BOOL,     "0"),
+  V(MoneTorPaymentRate,          BOOL,     "0"),
+  V(MoneTorInitialWindow,        BOOL,     "0"),
   V(AccountingMax,               MEMUNIT,  "0 bytes"),
   VAR("AccountingRule",          STRING,   AccountingRule_option,  "max"),
   V(AccountingStart,             STRING,   NULL),
@@ -8302,4 +8314,3 @@ init_cookie_authentication(const char *fname, const char *header,
   tor_free(cookie_file_str);
   return retval;
 }
-

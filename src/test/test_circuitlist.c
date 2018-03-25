@@ -90,13 +90,13 @@ test_clist_maps(void *arg)
   ch2->cmux = tor_malloc(1);
   ch3->cmux = tor_malloc(1);
 
-  or_c1 = or_circuit_new(100, ch2);
+  or_c1 = or_circuit_new(100, ch2, 0);
   tt_assert(or_c1);
   GOT_CMUX_ATTACH(ch2->cmux, or_c1, CELL_DIRECTION_IN);
   tt_int_op(or_c1->p_circ_id, OP_EQ, 100);
   tt_ptr_op(or_c1->p_chan, OP_EQ, ch2);
 
-  or_c2 = or_circuit_new(100, ch1);
+  or_c2 = or_circuit_new(100, ch1, 0);
   tt_assert(or_c2);
   GOT_CMUX_ATTACH(ch1->cmux, or_c2, CELL_DIRECTION_IN);
   tt_int_op(or_c2->p_circ_id, OP_EQ, 100);
@@ -191,10 +191,10 @@ test_rend_token_maps(void *arg)
 
   hs_circuitmap_init();
 
-  c1 = or_circuit_new(0, NULL);
-  c2 = or_circuit_new(0, NULL);
-  c3 = or_circuit_new(0, NULL);
-  c4 = or_circuit_new(0, NULL);
+  c1 = or_circuit_new(0, NULL, 0);
+  c2 = or_circuit_new(0, NULL, 0);
+  c3 = or_circuit_new(0, NULL, 0);
+  c4 = or_circuit_new(0, NULL, 0);
   c5 = origin_circuit_new();
 
   /* Make sure we really filled up the tok* variables */
@@ -398,7 +398,7 @@ test_hs_circuitmap_isolation(void *arg)
   {
     const uint8_t tok1[REND_TOKEN_LEN] = "bet i got some of th";
 
-    circ1 = or_circuit_new(0, NULL);
+    circ1 = or_circuit_new(0, NULL, 0);
     tt_assert(circ1);
     circ1->base_.purpose = CIRCUIT_PURPOSE_REND_POINT_WAITING;
 
@@ -422,7 +422,7 @@ test_hs_circuitmap_isolation(void *arg)
     circ2 = origin_circuit_new();
     tt_assert(circ2);
     circ2->base_.purpose = CIRCUIT_PURPOSE_S_ESTABLISH_INTRO;
-    circ3 = or_circuit_new(0, NULL);
+    circ3 = or_circuit_new(0, NULL, 0);
     tt_assert(circ3);
     circ3->base_.purpose = CIRCUIT_PURPOSE_INTRO_POINT;
     circ4 = origin_circuit_new();
@@ -466,4 +466,3 @@ struct testcase_t circuitlist_tests[] = {
     TT_FORK, NULL, NULL },
   END_OF_TESTCASES
 };
-

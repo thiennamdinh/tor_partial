@@ -38,7 +38,7 @@ circuit_mark_for_close_dummy_(circuit_t *circ, int reason, int line,
 static circuit_t *
 dummy_or_circuit_new(int n_p_cells, int n_n_cells)
 {
-  or_circuit_t *circ = or_circuit_new(0, NULL);
+  or_circuit_t *circ = or_circuit_new(0, NULL, 0);
   int i;
   cell_t cell;
 
@@ -347,4 +347,3 @@ struct testcase_t oom_tests[] = {
   { "streambuf", test_oom_streambuf, TT_FORK, NULL, NULL },
   END_OF_TESTCASES
 };
-

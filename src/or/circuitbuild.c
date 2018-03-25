@@ -721,7 +721,10 @@ circuit_deliver_create_cell(circuit_t *circ, const create_cell_t *create_cell,
   tor_assert(create_cell);
   tor_assert(create_cell->cell_type == CELL_CREATE ||
              create_cell->cell_type == CELL_CREATE_FAST ||
-             create_cell->cell_type == CELL_CREATE2);
+             create_cell->cell_type == CELL_CREATE2 ||
+	     create_cell->cell_type == CELL_CREATE_PREMIUM ||
+             create_cell->cell_type == CELL_CREATE_FAST_PREMIUM ||
+             create_cell->cell_type == CELL_CREATE2_PREMIUM);
 
   id = get_unique_circ_id_by_chan(circ->n_chan);
   if (!id) {
@@ -962,6 +965,7 @@ circuit_send_first_onion_skin(origin_circuit_t *circ)
   int len;
   const node_t *node;
   create_cell_t cc;
+
   memset(&cc, 0, sizeof(cc));
 
   log_debug(LD_CIRC,"First skin; sending create cell.");
@@ -992,6 +996,22 @@ circuit_send_first_onion_skin(origin_circuit_t *circ)
     cc.handshake_type = ONION_HANDSHAKE_TYPE_FAST;
   }
 
+  // XXX moneTor set cell premium here
+  if(get_options()->ClientOnly && get_options()->EnablePayment){
+    switch(cc.cell_type){
+      case CELL_CREATE:;
+	cc.cell_type = CELL_CREATE_PREMIUM;
+	break;
+      case CELL_CREATE_FAST:;
+	cc.cell_type = CELL_CREATE_FAST_PREMIUM;
+	break;
+      case CELL_CREATE2:;
+	cc.cell_type = CELL_CREATE2_PREMIUM;
+	break;
+      default:
+	log_info(LD_GENERAL, "mt_ideal: ERROR: not a create cell");
+    }
+  }
   len = onion_skin_create(cc.handshake_type,
                           circ->cpath->extend_info,
                           &circ->cpath->handshake_state,
@@ -1178,6 +1198,16 @@ circuit_send_intermediate_onion_skin(origin_circuit_t *circ,
       return -END_CIRC_REASON_INTERNAL;
     }
 
+    // XXX moneTor
+    if(get_options()->ClientOnly && get_options()->EnablePayment){
+      if(command == RELAY_COMMAND_EXTEND){
+	command = RELAY_COMMAND_EXTEND_PREMIUM;
+      }
+      if(command == RELAY_COMMAND_EXTEND2){
+	command = RELAY_COMMAND_EXTEND2_PREMIUM;
+      }
+    }
+
     /* send it to hop->prev, because that relay will transfer
      * it to a create cell and then send to hop */
     if (relay_send_command_from_edge(0, TO_CIRCUIT(circ),
@@ -1250,6 +1280,17 @@ circuit_extend(cell_t *cell, circuit_t *circ)
   }
 
   relay_header_unpack(&rh, cell->payload);
+
+  // XXX moneTor temporarily convert into non premium here for parsing
+  int premium = 0;
+  if(rh.command == RELAY_COMMAND_EXTEND_PREMIUM){
+    rh.command = RELAY_COMMAND_EXTEND;
+    premium = 1;
+  }
+  else if(rh.command == RELAY_COMMAND_EXTEND2_PREMIUM){
+    rh.command = RELAY_COMMAND_EXTEND2;
+    premium = 1;
+  }
 
   if (extend_cell_parse(&ec, rh.command,
                         cell->payload+RELAY_HEADER_SIZE,
@@ -1365,6 +1406,18 @@ circuit_extend(cell_t *cell, circuit_t *circ)
   log_debug(LD_CIRC,
             "n_chan is %s",
             channel_get_canonical_remote_descr(n_chan));
+
+  // XXX moneTor
+  if(premium){
+    if(ec.create_cell.cell_type == CELL_CREATE)
+      ec.create_cell.cell_type = CELL_CREATE_PREMIUM;
+    else if(premium && ec.create_cell.cell_type == CELL_CREATE_FAST)
+      ec.create_cell.cell_type = CELL_CREATE_FAST_PREMIUM;
+    else if(premium && ec.create_cell.cell_type == CELL_CREATE2)
+      ec.create_cell.cell_type = CELL_CREATE2_PREMIUM;
+    else
+      log_info(LD_GENERAL, "mt_ideal: ERROR: unexpected create cell type");
+  }
 
   if (circuit_deliver_create_cell(circ, &ec.create_cell, 1) < 0)
     return -1;
@@ -2623,6 +2676,10 @@ onion_append_hop(crypt_path_t **head_ptr, extend_info_t *choice)
   hop->package_window = circuit_initial_package_window();
   hop->deliver_window = CIRCWINDOW_START;
 
+  // moneTor flow: client side
+  hop->package_window = mt_modify_flow_value(hop->package_window, NULL);
+  hop->deliver_window = mt_modify_flow_value(hop->deliver_window, NULL);
+
   return 0;
 }
 
@@ -2890,4 +2947,3 @@ circuit_upgrade_circuits_from_guard_wait(void)
 
   smartlist_free(to_upgrade);
 }
-

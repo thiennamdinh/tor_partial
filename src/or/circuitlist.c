@@ -810,6 +810,11 @@ init_circuit_base(circuit_t *circ)
 
   circ->package_window = circuit_initial_package_window();
   circ->deliver_window = CIRCWINDOW_START;
+
+  // moneTor flow: client side & relay side
+  circ->package_window = mt_modify_flow_value(circ->package_window, circ);
+  circ->deliver_window = mt_modify_flow_value(circ->deliver_window, circ);
+
   cell_queue_init(&circ->n_chan_cells);
 
   smartlist_add(circuit_get_global_list(), circ);
@@ -889,13 +894,16 @@ origin_circuit_new(void)
 /** Allocate a new or_circuit_t, connected to <b>p_chan</b> as
  * <b>p_circ_id</b>.  If <b>p_chan</b> is NULL, the circuit is unattached. */
 or_circuit_t *
-or_circuit_new(circid_t p_circ_id, channel_t *p_chan)
+or_circuit_new(circid_t p_circ_id, channel_t *p_chan, int premium)
 {
+
   /* CircIDs */
   or_circuit_t *circ;
 
   circ = tor_malloc_zero(sizeof(or_circuit_t));
   circ->base_.magic = OR_CIRCUIT_MAGIC;
+
+  TO_CIRCUIT(circ)->mt_priority = premium;
 
   if (p_chan)
     circuit_set_p_circid_chan(circ, p_circ_id, p_chan);
@@ -2205,7 +2213,8 @@ circuit_max_queued_cell_age(const circuit_t *c, uint32_t now)
 
 /** Return the age in milliseconds of the oldest buffer chunk on <b>conn</b>,
  * where age is taken in milliseconds before the time <b>now</b> (in truncated
- * absolute monotonic msec).  If the connection has no data, treat
+ * absolute mon
+otonic msec).  If the connection has no data, treat
  * it as having age zero.
  **/
 static uint32_t
@@ -2555,4 +2564,3 @@ assert_circuit_ok,(const circuit_t *c))
     tor_assert(!or_circ || !or_circ->rend_splice);
   }
 }
-

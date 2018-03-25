@@ -608,7 +608,7 @@ test_cfmt_extend_cells(void *arg)
   memcpy(p+6,b,TAP_ONIONSKIN_CHALLENGE_LEN);
   memcpy(p+6+TAP_ONIONSKIN_CHALLENGE_LEN, "electroencephalogram", 20);
   tt_int_op(0, OP_EQ, extend_cell_parse(&ec, RELAY_COMMAND_EXTEND,
-                                     p, 26+TAP_ONIONSKIN_CHALLENGE_LEN));
+					p, 26+TAP_ONIONSKIN_CHALLENGE_LEN));
   tt_int_op(RELAY_COMMAND_EXTEND, OP_EQ, ec.cell_type);
   tt_str_op("18.244.0.1", OP_EQ, fmt_addr(&ec.orport_ipv4.addr));
   tt_int_op(258, OP_EQ, ec.orport_ipv4.port);
@@ -1296,4 +1296,3 @@ struct testcase_t cell_format_tests[] = {
   TEST(is_destroy, 0),
   END_OF_TESTCASES
 };
-
