@@ -449,7 +449,7 @@ ewma_notify_xmit_cells(circuitmux_t *cmux,
     ((double)(n_cells)) * pow(ewma_scale_factor, -fractional_tick);
 
   /* XXX MoneTor - favor circuits that have been paid for */
-  if(circ->mt_priority && get_options()->MoneTorPriorityMod)
+  if(circ->mt_priority && get_options()->MoneTorPriorityMod > 0.0)
     ewma_increment /= get_options()->MoneTorPriorityMod;
 
   /* Do the adjustment */
@@ -551,7 +551,7 @@ compare_cell_ewma_counts(const void *p1, const void *p2)
 {
   const cell_ewma_t *e1 = p1, *e2 = p2;
 
-  if(get_options()->MoneTorPriorityMod == 0.0){
+  if(get_options()->MoneTorPriorityMod <= 0.0){
     if(e1->premium && !e2->premium)
       return -1;
     else if(!e1->premium && e2->premium)

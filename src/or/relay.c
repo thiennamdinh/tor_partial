@@ -45,7 +45,9 @@
  * types of relay cells, launching requests or transmitting data as needed.
  **/
 
+
 #define RELAY_PRIVATE
+#include <math.h>
 #include "or.h"
 #include "addressmap.h"
 #include "backtrace.h"
@@ -79,7 +81,7 @@
 #include "rephist.h"
 
 // moneTor: square root of get_options()->MoneTorFlowMod; calculated once
-static flow_mod_sqrt;
+static double flow_mod_sqrt;
 
 static edge_connection_t *relay_lookup_conn(circuit_t *circ, cell_t *cell,
                                             cell_direction_t cell_direction,
