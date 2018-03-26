@@ -3049,7 +3049,7 @@ append_cell_to_circuit_queue(circuit_t *circ, channel_t *chan,
 	      now.tv_usec,
 	      circ->mt_priority,
 	      orcirc->p_circ_id,
-	      queue->n);
+	      queue->n + 1);
   }
 
   /*
