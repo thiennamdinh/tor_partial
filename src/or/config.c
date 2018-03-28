@@ -216,6 +216,7 @@ static config_var_t option_vars_[] = {
   V(EnablePayment,               BOOL,     "0"),
   V(MoneTorPriorityMod,          DOUBLE,   "1.0"),
   V(MoneTorFlowMod,              DOUBLE,   "1.0"),
+  V(MoneTorQueueProfile,         BOOL,     "0"),
   V(MoneTorPriorityMod,          DOUBLE,   "1.0"),
     // moneTor obsolete compatibility configs
   V(Intermediary,                BOOL,     "0"),

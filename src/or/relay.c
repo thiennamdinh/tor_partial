@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2001 Matej Pfajfar.
  * Copyright (c) 2001-2004, Roger Dingledine.
  * Copyright (c) 2004-2006, Roger Dingledine, Nick Mathewson.
@@ -2900,14 +2901,16 @@ channel_flush_from_first_active_circuit, (channel_t *chan, int max))
       queue = &TO_OR_CIRCUIT(circ)->p_chan_cells;
       streams_blocked = circ->streams_blocked_on_p_chan;
 
-      struct timeval now;
-      gettimeofday(&now, NULL);
-      log_debug(LD_GENERAL, "mt_ideal: queue flush %ld : %ld : %d : %u : %d",
-		(long)now.tv_sec,
-		now.tv_usec,
-		circ->mt_priority,
-		or_circ->p_circ_id,
-		queue->n - 1);
+      if(get_options()->MoneTorQueueProfile){
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	log_info(LD_GENERAL, "mt_ideal: queue flush %ld : %ld : %d : %u : %d",
+		  (long)now.tv_sec,
+		  now.tv_usec,
+		  circ->mt_priority,
+		  or_circ->p_circ_id,
+		  queue->n - 1);
+      }
     }
 
     /* Circuitmux told us this was active, so it should have cells */
@@ -3042,14 +3045,16 @@ append_cell_to_circuit_queue(circuit_t *circ, channel_t *chan,
     queue = &orcirc->p_chan_cells;
     streams_blocked = circ->streams_blocked_on_p_chan;
 
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    log_debug(LD_GENERAL, "mt_ideal: queue append %ld : %ld : %d : %u : %d",
-	      (long)now.tv_sec,
-	      now.tv_usec,
-	      circ->mt_priority,
-	      orcirc->p_circ_id,
-	      queue->n + 1);
+    if(get_options()->MoneTorQueueProfile){
+      struct timeval now;
+      gettimeofday(&now, NULL);
+      log_info(LD_GENERAL, "mt_ideal: queue append %ld : %ld : %d : %u : %d",
+		(long)now.tv_sec,
+		now.tv_usec,
+		circ->mt_priority,
+		orcirc->p_circ_id,
+		queue->n);
+    }
   }
 
   /*
