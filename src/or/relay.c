@@ -2856,7 +2856,7 @@ channel_flush_from_first_active_circuit, (channel_t *chan, int max))
       log_info(LD_GENERAL, "mt_ideal: queue flush %ld : %ld : %d : %u : %d",
 	       (long)now.tv_sec,
 	       now.tv_usec,
-	       circ->mt_priority,
+	       0,
 	       or_circ->p_circ_id,
 	       queue->n - 1);
     }
@@ -2998,7 +2998,7 @@ append_cell_to_circuit_queue(circuit_t *circ, channel_t *chan,
     log_info(LD_GENERAL, "mt_ideal: queue append %ld : %ld : %d : %u : %d",
 	     (long)now.tv_sec,
 	     now.tv_usec,
-	     circ->mt_priority,
+	     0,
 	     orcirc->p_circ_id,
 	     queue->n);
   }
